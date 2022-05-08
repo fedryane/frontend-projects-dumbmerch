@@ -1,48 +1,110 @@
-import React from "react";
-import Chat1 from "../assets/metallica.jpg";
-import Chat2 from "../assets/killua.png";
+import React, { useEffect, useState, useContext } from "react";
 import Navbar from "../inc/Navbar";
+import { io } from "socket.io-client";
+import ChatList from "../inc/ChatList";
+import ChatBody from "../inc/ChatBody";
+import { UserContext } from "../context/userContext";
+// initial variable outside component
+let socket;
 
 function AdminComplain() {
+  const [contact, setContact] = useState(null);
+  const [contacts, setContacts] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [state, dispatch] = useContext(UserContext);
+
+  // connect to server in useEffect function
+  useEffect(() => {
+    socket = io("http://localhost:8080", {
+      auth: {
+        token: localStorage.getItem("token"), // we must set options to get access to socket server
+      },
+      query: {
+        id: state.user.id,
+      },
+    });
+
+    socket.on("new message", () => {
+      console.log("contact", contact);
+      console.log("triggered", contact?.id);
+      socket.emit("load messages", contact?.id);
+    });
+
+    loadContacts();
+    loadMessages();
+
+    // listen error sent from server
+    socket.on("connect_error", (err) => {
+      console.error(err.message); // not authorized
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [messages]);
+
+  const loadContacts = () => {
+    // emit event to load admin contact
+    socket.emit("load customer contacts");
+
+    // listen event to get admin contact
+    socket.on("customer contacts", (data) => {
+      // do whatever to the data sent from server
+      console.log(data);
+
+      // filter agar admin tidak tampil
+      let dataContacts = data.filter((item) => item.status !== "admin" && (item.recipientMessage.length > 0 || item.senderMessage.length > 0));
+
+      dataContacts = dataContacts.map((item) => ({
+        ...item,
+        // message: item.senderMessage.length > 0 ? item.senderMessage[item.senderMessage.length - 1].message : "Click here to start message",
+      }));
+      setContacts(dataContacts);
+    });
+  };
+
+  const onClickContact = (data) => {
+    setContact(data);
+    socket.emit("load messages", data.id);
+  };
+
+  const loadMessages = (value) => {
+    socket.on("messages", (data) => {
+      if (data.length > 0) {
+        const dataMessages = data.map((item) => ({
+          idSender: item.sender.id,
+          message: item.message,
+        }));
+        console.log(dataMessages);
+        setMessages(dataMessages);
+      }
+      loadContacts();
+      const chatMessages = document.getElementById("chat-messages");
+      chatMessages.scrollTop = chatMessages?.scrollHeight;
+    });
+  };
+
+  const onSendMessage = (e) => {
+    if (e.key === "Enter") {
+      const data = {
+        idRecipient: contact.id,
+        message: e.target.value,
+      };
+      socket.emit("send messages", data);
+      e.target.value = "";
+    }
+  };
+
   return (
     <div>
-      <div>
-        <div className="container mt-5 text-white">
-          <div className="row">
-            <div className="col-4 d-flex">
-              <div>
-                <div className="d-flex">
-                  <img className="me-3 rounded-circle" src={Chat2} alt="admin" height={"50px"} />
-                  <div>
-                    <p className="fs-14 fw-500 mb-2">Fedryan</p>
-                    <p className="fs-14 fw-light text-secondary-2">Hello Admin, I Need Your Help</p>
-                  </div>
-                </div>
-                <div className="d-flex mt-4">
-                  <img className="me-3 rounded-circle" src={Chat1} alt="admin" height={"50px"} />
-                  <div>
-                    <p className="fs-14 fw-500 mb-2">killua</p>
-                    <p className="fs-14 fw-light text-secondary-2">Hello Admin, This Problem to Me</p>
-                  </div>
-                </div>
-              </div>
-              <div className="d-flex ms-auto" style={{ height: "700px" }}>
-                <div class="vr"></div>
-              </div>
-            </div>
-            <div className="col-8 d-flex flex-column justify-content-end">
-              <div className="d-flex ms-3">
-                <img className="me-3 rounded-circle" src={Chat2} alt="" height={"50px"} />
-                <div className="d-flex">
-                  <p className="fw-500 bg-dark p-3" style={{ borderRadius: "30px", width: "max-content" }}>
-                    Hello Admin, I Need Your Help
-                  </p>
-                </div>
-              </div>
-              <div className="d-flex ms-4 mt-4">
-                <input type="text" className="bg-dark mb-4 fw-600 form-control p-3" id="formGroupExampleInput" placeholder="Send Message" style={{ border: "none" }}></input>
-              </div>
-            </div>
+      <Navbar />
+      <div className="container">
+        <div className="row">
+          <div className="col">
+            <ChatList dataContact={contacts} clickContact={onClickContact} contact={contact} />
+          </div>
+          <div className="col">
+            <ChatBody contact={contact} messages={messages} user={state.user} sendMessage={onSendMessage} />
           </div>
         </div>
       </div>

@@ -5,6 +5,7 @@ import Navbar from "../inc/Navbar";
 function EditProduct() {
   return (
     <div>
+      <Navbar />
       <div className="container">
         <div className="row">
           <div className="col">

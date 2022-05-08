@@ -1,49 +1,114 @@
-import React from "react";
-import Gambar1 from "../assets/killua.png";
+import React, { useContext, useEffect, useState } from "react";
 import NavbarUser from "../inc/NavbarUser";
-import Gambar2 from "../assets/killua2.jpg";
+import { io } from "socket.io-client";
+import ChatList from "../inc/ChatList";
+import ChatBody from "../inc/ChatBody";
+import { UserContext } from "../context/userContext";
+
+// initial variable outside component
+let socket;
 
 function UserComplain() {
+  const [contact, setContact] = useState(null);
+  const [contacts, setContacts] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [state, dispatch] = useContext(UserContext);
+
+  // connect to server in useEffect function
+  useEffect(() => {
+    socket = io("http://localhost:8080", {
+      auth: {
+        token: localStorage.getItem("token"), // we must set options to get access to socket server
+      },
+      query: {
+        id: state.user.id,
+      },
+    });
+
+    socket.on("new message", () => {
+      console.log("contact", contact);
+      console.log("triggered", contact?.id);
+      socket.emit("load messages", contact?.id);
+    });
+
+    // listen error sent from server
+    socket.on("connect_error", (err) => {
+      console.error(err.message); // not authorized
+    });
+
+    loadContact();
+    loadMessages();
+
+    socket.on("connect_error", (err) => {
+      console.error(err.message); // not authorized
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [messages]);
+
+  const loadContact = () => {
+    // emit event to load admin contact
+    socket.emit("load admin contact");
+
+    // listen event to get admin contact
+    socket.on("admin contact", async (data) => {
+      // do whatever to the data sent from server
+      const dataContact = {
+        ...data,
+        message: messages.length > 0 ? messages[messages.length - 1].message : "click here to start message",
+      };
+      console.log(dataContact);
+      setContacts([dataContact]);
+    });
+  };
+
+  const onClickContact = (data) => {
+    setContact(data);
+    socket.emit("load messages", data.id);
+  };
+
+  const loadMessages = (value) => {
+    socket.on("admin contact", (data) => {
+      socket.on("messages", async (data) => {
+        if (data.length > 0) {
+          const dataMessages = data.map((item) => ({
+            idSender: item.sender.id,
+            message: item.message,
+          }));
+          console.log(dataMessages);
+          setMessages(dataMessages);
+        }
+        const chatMessages = document.getElementById("chat-messages");
+        chatMessages.scrollTop = chatMessages?.scrollHeight;
+      });
+    });
+  };
+
+  const onSendMessage = (e) => {
+    if (e.key === "Enter") {
+      const data = {
+        idRecipient: contact.id,
+        message: e.target.value,
+      };
+      console.log(onSendMessage);
+      socket.emit("send messages", data);
+      e.target.value = "";
+    }
+  };
+
+  console.log(messages);
   return (
     <div>
-      <div>
-        <NavbarUser />
-        <div className="container mt-5 text-white">
-          <div className="row">
-            <div className="col-4 d-flex">
-              <div>
-                <div className="d-flex">
-                  <img className="me-3 rounded-circle" src={Gambar2} alt="admin" height={"50px"} />
-                  <div>
-                    <p className="fs-14 fw-500 mb-2">Admin</p>
-                    <p className="fs-14 fw-light text-secondary-2">Yes, Is there anything I can help</p>
-                  </div>
-                </div>
-              </div>
-              <div className="d-flex ms-auto" style={{ height: "700px" }}>
-                <div class="vr"></div>
-              </div>
-            </div>
-            <div className="col-8 d-flex flex-column justify-content-end">
-              <div className="d-flex ms-3 justify-content-end">
-                <div className="d-flex">
-                  <p className="fw-500 bg-dark p-3" style={{ borderRadius: "30px" }}>
-                    Hello Admin, I Need Your Help
-                  </p>
-                </div>
-              </div>
-              <div className="d-flex ms-3">
-                <img className="me-3 rounded-circle" src={Gambar2} alt="" height={"50px"} />
-                <div className="d-flex">
-                  <p className="fw-500 bg-dark p-3" style={{ borderRadius: "30px" }}>
-                    Yes, Is there anything I can help ?
-                  </p>
-                </div>
-              </div>
-              <div className="d-flex ms-4 mt-4">
-                <input type="text" className="bg-dark mb-4 fw-600 form-control p-3" id="formGroupExampleInput" placeholder="Send Message" style={{ border: "none" }}></input>
-              </div>
-            </div>
+      <NavbarUser />
+      <div className="container">
+        <div className="row">
+          <div className="col">
+            <ChatList dataContact={contacts} clickContact={onClickContact} contact={contact} />
+          </div>
+          <div className="col">
+            <ChatBody contact={contact} messages={messages} user={state.user} sendMessage={onSendMessage} />
           </div>
         </div>
       </div>

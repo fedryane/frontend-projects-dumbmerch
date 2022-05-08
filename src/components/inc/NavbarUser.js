@@ -1,14 +1,27 @@
-import React from "react";
+import React, { useContext } from "react";
 import Logo from "../assets/frame-kecil.png";
 import "./NavbarUser.css";
-import { Link } from "react-router-dom";
+import { NavLink, Link, useNavigate } from "react-router-dom";
+import { UserContext } from "../context/userContext";
 
 function NavbarUser() {
+  const [state, dispatch] = useContext(UserContext);
+
+  let navigate = useNavigate();
+
+  const logout = () => {
+    console.log(state);
+    dispatch({
+      type: "LOGOUT",
+    });
+    navigate("/login");
+  };
+
   return (
     <div>
       <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-          <Link to="/">
+          <Link to="/home">
             <img src={Logo} />
           </Link>
           <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
@@ -17,7 +30,7 @@ function NavbarUser() {
           <div class="collapse navbar-collapse" id="navbarNavDropdown">
             <ul class="navbar-nav ms-auto">
               <li class="nav-item">
-                <Link to="/complain" class="nav-link">
+                <Link to="/complain-user" class="nav-link">
                   Complain
                 </Link>
               </li>
@@ -27,9 +40,9 @@ function NavbarUser() {
                 </Link>
               </li>
               <li class="nav-item">
-                <Link to="/logout" class="nav-link">
+                <a className="nav-link fw-bold" onClick={logout}>
                   Logout
-                </Link>
+                </a>
               </li>
             </ul>
           </div>

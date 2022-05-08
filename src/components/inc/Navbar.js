@@ -1,15 +1,27 @@
-import React from "react";
+import React, { useContext } from "react";
 import Logo from "../assets/frame-kecil.png";
-import { Link } from "react-router-dom";
+import { NavLink, Link, useNavigate } from "react-router-dom";
+import { UserContext } from "../context/userContext";
 
-function navbar() {
+function Navbar() {
+  const [state, dispatch] = useContext(UserContext);
+
+  let navigate = useNavigate();
+
+  const logout = () => {
+    console.log(state);
+    dispatch({
+      type: "LOGOUT",
+    });
+    navigate("/login");
+  };
+
   return (
     <div>
       <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-          <Link to="/home" className="nav-link">
-            <img src={Logo} />
-          </Link>
+        <div class="container">
+          <img src={Logo} />
+
           <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
           </button>
@@ -31,9 +43,9 @@ function navbar() {
                 </Link>
               </li>
               <li class="nav-item">
-                <Link to="/logout" class="nav-link">
+                <a onClick={logout} class="nav-link">
                   Logout
-                </Link>
+                </a>
               </li>
             </ul>
           </div>
@@ -43,4 +55,4 @@ function navbar() {
   );
 }
 
-export default navbar;
+export default Navbar;
